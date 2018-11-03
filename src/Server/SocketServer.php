@@ -31,7 +31,7 @@ class SocketServer
     {
         $this->host = $host;
         $this->port = $port;
-        $this->dataBase = new DataStore();
+//        $this->dataBase = new DataStore();
     }
 
     public function runServer() {
@@ -105,10 +105,10 @@ class SocketServer
                         $numerOfElementsReceived = $decoder->getNumberOfElements();
                         echo "Elements received: ".$numerOfElementsReceived."\n";
 
-                        foreach ($AVLArray as $AVLElement) {
-                            $this->dataBase->storeDataFromDevice($AVLElement);
-                        }
-                        echo "Data saved into the database"."\n";
+//                        foreach ($AVLArray as $AVLElement) {
+//                            $this->dataBase->storeDataFromDevice($AVLElement);
+//                        }
+//                        echo "Data saved into the database"."\n";
 
                         //Send the response to server with the number of records we got (4 bytes integer)
                         $connection->write(pack('N', $numerOfElementsReceived));
