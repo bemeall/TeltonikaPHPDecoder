@@ -16,7 +16,7 @@ use lbarrous\TeltonikaDecoder\Entities\ImeiNumber;
 class TeltonikaDecoderImp implements TeltonikaDecoder
 {
 
-    const HEX_DATA_LENGHT = 64;
+    const HEX_DATA_LENGHT = 100;
     const HEX_DATA_HEADER = 20;
 
     const CODEC8 = 8;
@@ -36,11 +36,21 @@ class TeltonikaDecoderImp implements TeltonikaDecoder
     const ELEMENTCOUNT_HEX_LENGTH = 2;
     const ID_HEX_LENGTH = 2;
     const VALUE_HEX_LENGTH = 2;
+
     const ELEMENT_COUNT_1B_HEX_LENGTH = 2;
+    const ELEMENT_COUNT_2B_HEX_LENGTH = 2;
+    const ELEMENT_COUNT_4B_HEX_LENGTH = 2;
+    const ELEMENT_COUNT_8B_HEX_LENGTH = 2;
+
+    const VALUE_1B_HEX_LENGTH = 2;
+    const VALUE_2B_HEX_LENGTH = 4;
+    const VALUE_4B_HEX_LENGTH = 8;
+    const VALUE_8B_HEX_LENGTH = 16;
 
     private $imei;
     private $dataFromDevice;
     private $AVLData;
+    private $pointer;
 
     /**
      * TeltonikaDecoderImp constructor.
@@ -51,6 +61,7 @@ class TeltonikaDecoderImp implements TeltonikaDecoder
         $this->dataFromDevice = $dataFromDevice;
         $this->imei = $imei;
         $this->AVLData = array();
+        $this->pointer = self::HEX_DATA_HEADER;
     }
 
 
@@ -89,16 +100,15 @@ class TeltonikaDecoderImp implements TeltonikaDecoder
 
         $dataCount = $this->getNumberOfElements();
 
-        $startPosition = self::HEX_DATA_HEADER;
+        $startPosition = $this->pointer;
 
         for($i=0; $i<$dataCount; $i++) {
-            $hexDataOfElement = substr($hexDataWithoutCRC,$startPosition,self::HEX_DATA_LENGHT);
+            $hexDataOfElement = substr($hexDataWithoutCRC,$startPosition,strlen($hexDataWithoutCRC));
 
-            //
             //Decode and add to array of elements
             $AVLArray[] = $this->decodeAVLArrayData($hexDataOfElement);
-            //
-            $startPosition += self::HEX_DATA_LENGHT;
+
+            $startPosition += $this->pointer;
         }
 
         return $AVLArray;
@@ -107,6 +117,7 @@ class TeltonikaDecoderImp implements TeltonikaDecoder
     private function codec8Decode(string $hexDataOfElement) :AVLData {
 
         $arrayElement = array();
+        $IOElements = [];
 
         $AVLElement = new AVLData();
 
@@ -144,18 +155,72 @@ class TeltonikaDecoderImp implements TeltonikaDecoder
 
         $AVLElement->setGpsData($GPSData);
 
+        //io
         $eventID = hexdec(substr($hexDataOfElement, $stringSplitter, self::EVENTID_HEX_LENGTH));
         $stringSplitter+= self::EVENTID_HEX_LENGTH;
+
         $elementCount = hexdec(substr($hexDataOfElement, $stringSplitter, self::ELEMENTCOUNT_HEX_LENGTH));
-        $stringSplitter+= self::ELEMENTCOUNT_HEX_LENGTH+self::ELEMENT_COUNT_1B_HEX_LENGTH;
-        $ID = hexdec(substr($hexDataOfElement, $stringSplitter, self::ID_HEX_LENGTH));
-        $stringSplitter+= self::ID_HEX_LENGTH;
-        $value = hexdec(substr($hexDataOfElement, $stringSplitter, self::VALUE_HEX_LENGTH));
+        $stringSplitter+= self::ELEMENTCOUNT_HEX_LENGTH;
 
-        $IOElement = new Entities\IOData($eventID, $elementCount, $ID, $value);
+        // 1byte I/o
+        $elementCount1B = hexdec(substr($hexDataOfElement, $stringSplitter, self::ELEMENT_COUNT_1B_HEX_LENGTH));
+        $stringSplitter+= self::ELEMENT_COUNT_1B_HEX_LENGTH;
 
-        $AVLElement->setIOData($IOElement);
+        for ($i = 0; $i < $elementCount1B; $i++) {
+            $ID = hexdec(substr($hexDataOfElement, $stringSplitter, self::ID_HEX_LENGTH));
+            $stringSplitter+= self::ID_HEX_LENGTH;
 
+            $value = hexdec(substr($hexDataOfElement, $stringSplitter, self::VALUE_1B_HEX_LENGTH));
+            $stringSplitter+= self::VALUE_1B_HEX_LENGTH;
+
+            $IOElements[] = new Entities\IOData($eventID, $elementCount, $ID, $value);
+        }
+
+        // 2byte I/o
+        $elementCount2B = hexdec(substr($hexDataOfElement, $stringSplitter, self::ELEMENT_COUNT_2B_HEX_LENGTH));
+        $stringSplitter+= self::ELEMENT_COUNT_2B_HEX_LENGTH;
+
+        for ($i = 0; $i < $elementCount2B; $i++) {
+            $ID = hexdec(substr($hexDataOfElement, $stringSplitter, self::ID_HEX_LENGTH));
+            $stringSplitter+= self::ID_HEX_LENGTH;
+
+            $value = hexdec(substr($hexDataOfElement, $stringSplitter, self::VALUE_2B_HEX_LENGTH));
+            $stringSplitter+= self::VALUE_2B_HEX_LENGTH;
+
+            $IOElements[] = new Entities\IOData($eventID, $elementCount, $ID, $value);
+        }
+
+        // 4byte I/o
+        $elementCount4B = hexdec(substr($hexDataOfElement, $stringSplitter, self::ELEMENT_COUNT_4B_HEX_LENGTH));
+        $stringSplitter+= self::ELEMENT_COUNT_4B_HEX_LENGTH;
+
+        for ($i = 0; $i < $elementCount4B; $i++) {
+            $ID = hexdec(substr($hexDataOfElement, $stringSplitter, self::ID_HEX_LENGTH));
+            $stringSplitter+= self::ID_HEX_LENGTH;
+
+            $value = hexdec(substr($hexDataOfElement, $stringSplitter, self::VALUE_4B_HEX_LENGTH));
+            $stringSplitter+= self::VALUE_4B_HEX_LENGTH;
+
+            $IOElements[] = new Entities\IOData($eventID, $elementCount, $ID, $value);
+        }
+
+        // 8byte I/o
+        $elementCount8B = hexdec(substr($hexDataOfElement, $stringSplitter, self::ELEMENT_COUNT_8B_HEX_LENGTH));
+        $stringSplitter+= self::ELEMENT_COUNT_8B_HEX_LENGTH;
+
+        for ($i = 0; $i < $elementCount8B; $i++) {
+            $ID = hexdec(substr($hexDataOfElement, $stringSplitter, self::ID_HEX_LENGTH));
+            $stringSplitter+= self::ID_HEX_LENGTH;
+
+            $value = hexdec(substr($hexDataOfElement, $stringSplitter, self::VALUE_8B_HEX_LENGTH));
+            $stringSplitter+= self::VALUE_8B_HEX_LENGTH;
+
+            $IOElements[] = new Entities\IOData($eventID, $elementCount, $ID, $value);
+        }
+
+        $this->pointer = $stringSplitter;
+
+        $AVLElement->setIOData($IOElements);
         return $AVLElement;
 
     }
